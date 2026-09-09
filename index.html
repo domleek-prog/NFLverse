@@ -1,0 +1,708 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NFL matchups</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --ground: #0b0f14;
+  --panel: #10161d;
+  --panel-hi: #151d26;
+  --line: #1d2731;
+  --line-hi: #2a3742;
+  --ink: #f1f4f6;
+  --ink-soft: #c5cfd6;
+  --muted: #7b8a95;
+  --dim: #4a5a66;
+  --good: #1d9e75;
+  --bad: #d85a30;
+  --lit: #eda100;
+  --r: 8px;
+}
+* { box-sizing: border-box; }
+html, body {
+  margin: 0; padding: 0;
+  background: var(--ground); color: var(--ink);
+  font-family: 'Archivo', 'Helvetica Neue', Arial, sans-serif;
+  font-size: 15px; line-height: 1.45; -webkit-font-smoothing: antialiased;
+}
+body { padding: 0 20px 80px; }
+.wrap { max-width: 1120px; margin: 0 auto; }
+:focus-visible { outline: 2px solid var(--lit); outline-offset: 2px; }
+
+.masthead { display: flex; align-items: baseline; justify-content: space-between; gap: 20px; flex-wrap: wrap; padding: 30px 0 18px; }
+.masthead h1 { margin: 0; font-size: 20px; font-weight: 500; letter-spacing: -0.01em; }
+.masthead p { margin: 3px 0 0; color: var(--muted); font-size: 13px; max-width: 58ch; }
+.status { display: flex; align-items: center; gap: 12px; font-size: 12px; color: var(--muted); }
+
+button { font: inherit; color: inherit; cursor: pointer; }
+.btn { background: var(--panel); border: 1px solid var(--line-hi); border-radius: var(--r); padding: 6px 12px; font-size: 13px; color: var(--ink-soft); }
+.btn:hover { border-color: var(--dim); color: var(--ink); }
+.btn[disabled] { opacity: 0.45; cursor: default; }
+
+.controls { display: flex; flex-wrap: wrap; gap: 20px; padding: 16px; background: var(--panel); border-radius: var(--r); }
+.control { display: flex; flex-direction: column; gap: 6px; }
+.control > span { font-size: 11px; color: var(--muted); }
+.segmented { display: flex; background: var(--ground); border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
+.segmented button { background: none; border: 0; border-right: 1px solid var(--line); padding: 5px 10px; font-size: 12px; color: var(--muted); white-space: nowrap; }
+.segmented button:last-child { border-right: 0; }
+.segmented button:hover { color: var(--ink-soft); }
+.segmented button[aria-pressed="true"] { background: var(--panel-hi); color: var(--ink); }
+select, input[type="search"] {
+  background: var(--ground); color: var(--ink); border: 1px solid var(--line);
+  border-radius: 6px; padding: 5px 9px; font: inherit; font-size: 12px;
+}
+
+.strip { display: flex; flex-wrap: wrap; gap: 30px; padding: 20px 4px; }
+.stat > b { display: block; font-size: 23px; font-weight: 500; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
+.stat > span { font-size: 11px; color: var(--muted); }
+
+.game { background: var(--panel); border-radius: var(--r); margin-bottom: 12px; padding: 4px 16px 10px; }
+.gamehead { display: flex; justify-content: space-between; align-items: baseline; padding: 12px 0 6px; }
+.gamehead b { font-size: 14px; font-weight: 500; }
+.gamehead span { font-size: 11px; color: var(--muted); }
+
+.plr { display: grid; grid-template-columns: 86px minmax(0, 1fr) 210px; gap: 16px; align-items: center; padding: 9px 0; border-top: 1px solid var(--line); }
+.plr:hover { background: var(--panel-hi); }
+.proj > b { display: block; font-size: 22px; font-weight: 500; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; line-height: 1.1; }
+.proj > span { font-size: 11px; color: var(--muted); }
+.who { min-width: 0; }
+.who b { display: block; font-size: 14px; font-weight: 500; color: var(--ink-soft); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.who span { font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.split { display: flex; gap: 14px; justify-content: flex-end; font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.split div { text-align: right; }
+.split b { display: block; font-size: 13px; font-weight: 500; color: var(--ink-soft); }
+
+.mtag { display: inline-block; font-size: 10px; padding: 0 5px; border-radius: 3px; border: 1px solid currentColor; margin-left: 6px; }
+.mtag.up { color: var(--good); }
+.mtag.down { color: var(--bad); }
+.mtag.thin { color: var(--lit); }
+
+.note { background: var(--panel); border-left: 3px solid var(--lit); border-radius: 0 var(--r) var(--r) 0; padding: 14px 16px; margin-top: 18px; font-size: 14px; }
+.note h3 { margin: 0 0 6px; font-size: 14px; font-weight: 500; }
+.note p { margin: 0 0 8px; color: var(--ink-soft); }
+.note p:last-child { margin-bottom: 0; }
+.note code { font-size: 12px; background: var(--ground); padding: 1px 5px; border-radius: 3px; word-break: break-all; }
+
+.empty { padding: 50px 0; text-align: center; color: var(--muted); }
+.hidden { display: none !important; }
+
+table { width: 100%; border-collapse: collapse; background: var(--panel); border-radius: var(--r); font-variant-numeric: tabular-nums; margin-top: 8px; }
+th, td { padding: 7px 10px; text-align: right; border-bottom: 1px solid var(--line); font-size: 13px; }
+th { position: sticky; top: 0; background: var(--panel-hi); font-weight: 500; font-size: 11px; color: var(--muted); cursor: pointer; }
+th:first-child, td:first-child { text-align: left; }
+td { color: var(--ink-soft); }
+tbody tr:last-child td { border-bottom: 0; }
+
+@media (max-width: 820px) {
+  .plr { grid-template-columns: 76px minmax(0, 1fr); row-gap: 8px; }
+  .split { grid-column: 1 / -1; justify-content: flex-start; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="masthead">
+    <div>
+      <h1>NFL matchups</h1>
+      <p>Projected lines from a player's role and efficiency against what the opposing defence gives up to his position.</p>
+    </div>
+    <div class="status">
+      <span id="dataStatus">Loading…</span>
+      <button class="btn" id="refreshBtn">Refresh data</button>
+    </div>
+  </header>
+
+  <section class="controls">
+    <label class="control"><span>Week</span><select id="weekSelect"></select></label>
+    <label class="control"><span>Stat</span>
+      <div class="segmented" id="statControl">
+        <button type="button" data-stat="rush">Rush yards</button>
+        <button type="button" data-stat="recv">Receiving yards</button>
+        <button type="button" data-stat="pass">Pass yards</button>
+      </div>
+    </label>
+    <label class="control"><span>Sort by</span>
+      <div class="segmented" id="sortControl">
+        <button type="button" data-sort="proj">Projection</button>
+        <button type="button" data-sort="edge">Matchup edge</button>
+        <button type="button" data-sort="game">Game</button>
+      </div>
+    </label>
+    <label class="control"><span>Minimum role</span>
+      <div class="segmented" id="minControl">
+        <button type="button" data-min="0">All</button>
+        <button type="button" data-min="4">Rotation</button>
+        <button type="button" data-min="9">Starters</button>
+      </div>
+    </label>
+    <label class="control"><span>Find</span><input type="search" id="search" placeholder="Player or team"></label>
+    <label class="control"><span>View</span>
+      <div class="segmented" id="viewControl">
+        <button type="button" data-view="matchups">Matchups</button>
+        <button type="button" data-view="defence">Defences</button>
+      </div>
+    </label>
+  </section>
+
+  <section class="strip" id="strip"></section>
+
+  <div id="messages"></div>
+  <div id="mainView"></div>
+
+</div>
+
+<script>
+'use strict';
+
+const CACHE_KEY = 'nfl.data.v1';
+const PREFS_KEY = 'nfl.prefs.v1';
+const CACHE_MAX_AGE = 3 * 60 * 60 * 1000;
+
+// How much evidence before a rate is trusted at face value. Below this it is
+// pulled toward the league average.
+const PLAYER_SHRINK = 4;   // games
+const DEF_SHRINK = 5;      // games
+
+let data = null;
+let index = null;
+
+const prefs = Object.assign({
+  stat: 'rush',
+  sort: 'proj',
+  min: '4',
+  view: 'matchups',
+  week: null,
+  search: '',
+}, loadPrefs());
+
+function loadPrefs() {
+  try { return JSON.parse(localStorage.getItem(PREFS_KEY)) || {}; } catch { return {}; }
+}
+function savePrefs() {
+  try { localStorage.setItem(PREFS_KEY, JSON.stringify(prefs)); } catch {}
+}
+
+// ---------------------------------------------------------------------------
+// Stat definitions
+//
+// Every projection splits into volume and efficiency, because a defence acts
+// on them very differently. How many carries a back gets is set by his role
+// and the game script; how far each one goes is set by the matchup. Applying
+// a defensive multiplier to total yards conflates the two and implies a good
+// run defence takes carries away from him, which is not how it works.
+// ---------------------------------------------------------------------------
+
+const STATS = {
+  rush: {
+    label: 'rush yards',
+    positions: ['RB', 'QB', 'FB', 'WR'],
+    volume: (r) => r.car,
+    yards: (r) => r.ryd,
+    volumeLabel: 'carries',
+    effLabel: 'yds/carry',
+  },
+  recv: {
+    label: 'receiving yards',
+    positions: ['WR', 'TE', 'RB', 'FB'],
+    volume: (r) => r.tgt,
+    yards: (r) => r.cyd,
+    volumeLabel: 'targets',
+    effLabel: 'yds/target',
+  },
+  pass: {
+    label: 'pass yards',
+    positions: ['QB'],
+    volume: (r) => r.att,
+    yards: (r) => r.pyd,
+    volumeLabel: 'attempts',
+    effLabel: 'yds/attempt',
+  },
+};
+
+// ---------------------------------------------------------------------------
+// Loading
+// ---------------------------------------------------------------------------
+
+async function load({ force = false } = {}) {
+  const cached = readCache();
+  if (cached && !force) {
+    adopt(cached, true);
+    if (cacheAge(cached) < CACHE_MAX_AGE) return;
+  }
+
+  setStatus(cached ? 'Checking for new games…' : 'Fetching stats…');
+
+  try {
+    const res = await fetch('/.netlify/functions/data');
+    if (!res.ok) throw new Error('Server returned ' + res.status);
+
+    const payload = await res.json();
+
+    if (!payload.stats || !payload.stats.length) {
+      const detail = (payload.attempts || []).slice(0, 3)
+        .map((a) => a.url.split('/').slice(-1)[0] + ' — ' + a.message).join('; ');
+      throw new Error(detail || 'The function ran but returned no stats.');
+    }
+
+    writeCache(payload);
+    adopt(payload, false);
+  } catch (err) {
+    if (cached) {
+      if (force) adopt(cached, true);
+      showNote(err.message, true);
+    } else {
+      setStatus('No data');
+      showNote(err.message, false);
+    }
+  }
+}
+
+function cacheAge(p) {
+  const t = new Date(p.fetchedAt).getTime();
+  return Number.isFinite(t) ? Date.now() - t : Infinity;
+}
+function readCache() {
+  try { const raw = localStorage.getItem(CACHE_KEY); return raw ? JSON.parse(raw) : null; } catch { return null; }
+}
+function writeCache(p) {
+  try { localStorage.setItem(CACHE_KEY, JSON.stringify(p)); } catch {}
+}
+
+function adopt(payload, fromCache) {
+  data = payload;
+  buildIndex();
+  const when = new Date(payload.fetchedAt);
+  const label = when.toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+  setStatus(payload.stats.length.toLocaleString('en-GB') + ' player games · ' + (fromCache ? 'cached ' : '') + label);
+  buildWeeks();
+  render();
+}
+
+function setStatus(t) { document.getElementById('dataStatus').textContent = t; }
+
+function showNote(message, haveCache) {
+  const el = document.createElement('div');
+  el.className = 'note';
+  el.innerHTML = haveCache
+    ? '<h3>Showing the last saved copy</h3><p>The live fetch failed: ' + esc(message) + '.</p>'
+    : '<h3>Could not reach the data function</h3><p>The fetch failed: ' + esc(message) + '.</p>'
+      + '<p>If you are opening this file directly, the function is not running. Start it with <code>netlify dev</code>, or deploy the site.</p>';
+  document.getElementById('messages').appendChild(el);
+}
+
+// ---------------------------------------------------------------------------
+// Index
+// ---------------------------------------------------------------------------
+
+function buildIndex() {
+  const players = new Map();
+
+  for (const r of data.stats) {
+    if (!players.has(r.id)) {
+      players.set(r.id, { id: r.id, name: r.name, pos: r.pos, team: r.team, games: [] });
+    }
+    const p = players.get(r.id);
+    p.games.push(r);
+    // Most recent team wins — players move.
+    if (r.season > (p.lastSeason || 0) || (r.season === p.lastSeason && r.week >= (p.lastWeek || 0))) {
+      p.team = r.team;
+      p.pos = r.pos;
+      p.lastSeason = r.season;
+      p.lastWeek = r.week;
+    }
+  }
+
+  for (const p of players.values()) {
+    p.games.sort((a, b) => b.season - a.season || b.week - a.week);
+  }
+
+  index = { players };
+}
+
+function buildWeeks() {
+  const sel = document.getElementById('weekSelect');
+  const season = data.season;
+  const weeks = [...new Set(data.games.filter((g) => g.season === season).map((g) => g.week))].sort((a, b) => a - b);
+
+  // Default to the first week that has not been played yet.
+  const unplayed = data.games
+    .filter((g) => g.season === season && g.homeScore === null)
+    .map((g) => g.week);
+  const nextWeek = unplayed.length ? Math.min.apply(null, unplayed) : (weeks[weeks.length - 1] || 1);
+
+  if (prefs.week === null || !weeks.includes(prefs.week)) prefs.week = nextWeek;
+
+  sel.innerHTML = weeks.map((w) =>
+    '<option value="' + w + '"' + (w === prefs.week ? ' selected' : '') + '>Week ' + w + '</option>').join('');
+}
+
+// ---------------------------------------------------------------------------
+// Rates
+//
+// A player's own rate and a defence's allowed rate are both averages over a
+// small number of games, so both are pulled toward the league average in
+// proportion to how little evidence sits behind them.
+// ---------------------------------------------------------------------------
+
+function shrink(rate, n, leagueRate, k) {
+  if (!n) return leagueRate;
+  const w = n / (n + k);
+  return leagueRate + (rate - leagueRate) * w;
+}
+
+// Player games that count toward the current projection: this season first,
+// topped up with last season if this season is still thin.
+function relevantGames(player, statKey) {
+  const def = STATS[statKey];
+  const season = data.season;
+
+  const eligible = player.games.filter((g) => def.positions.includes(player.pos));
+  const thisSeason = eligible.filter((g) => g.season === season);
+
+  if (thisSeason.length >= 6) return { games: thisSeason, carried: 0 };
+
+  const prior = eligible.filter((g) => g.season === season - 1).slice(0, 10 - thisSeason.length);
+  return { games: thisSeason.concat(prior), carried: prior.length };
+}
+
+function leagueRates(statKey) {
+  const def = STATS[statKey];
+  let vol = 0, yds = 0, games = 0;
+
+  for (const r of data.stats) {
+    if (!def.positions.includes(r.pos)) continue;
+    const v = def.volume(r);
+    if (v <= 0) continue;
+    vol += v;
+    yds += def.yards(r);
+    games++;
+  }
+
+  return {
+    perGame: games ? vol / games : 0,
+    perUnit: vol ? yds / vol : 0,
+    games,
+  };
+}
+
+// What each defence gives up to this position group, per game, relative to
+// the league. Built from the opponent_team field on every player game.
+function defenceRates(statKey) {
+  const def = STATS[statKey];
+  const league = leagueRates(statKey);
+  const byTeam = new Map();
+
+  for (const r of data.stats) {
+    if (!def.positions.includes(r.pos)) continue;
+    const v = def.volume(r);
+    if (v <= 0) continue;
+
+    if (!byTeam.has(r.opp)) byTeam.set(r.opp, { vol: 0, yds: 0, games: new Set(), weight: 0 });
+    const d = byTeam.get(r.opp);
+    // Weight the prior season at half, since defences turn over between years.
+    const w = r.season === data.season ? 1 : 0.5;
+    d.vol += v * w;
+    d.yds += def.yards(r) * w;
+    d.weight += w;
+    d.games.add(r.season + '-' + r.week);
+  }
+
+  const out = new Map();
+  for (const [team, d] of byTeam) {
+    const n = d.games.size;
+    const rawVolPerGame = n ? d.vol / n : league.perGame;
+    const rawPerUnit = d.vol ? d.yds / d.vol : league.perUnit;
+
+    const volPerGame = shrink(rawVolPerGame, n, league.perGame, DEF_SHRINK);
+    const perUnit = shrink(rawPerUnit, n, league.perUnit, DEF_SHRINK);
+
+    out.set(team, {
+      games: n,
+      volPerGame,
+      perUnit,
+      // Above 1 means this defence gives up more than the league average.
+      volFactor: league.perGame ? volPerGame / league.perGame : 1,
+      effFactor: league.perUnit ? perUnit / league.perUnit : 1,
+    });
+  }
+
+  return { league, teams: out };
+}
+
+// ---------------------------------------------------------------------------
+// Projection
+// ---------------------------------------------------------------------------
+
+function project(player, opponent, statKey, rates) {
+  const def = STATS[statKey];
+  const { games, carried } = relevantGames(player, statKey);
+  const used = games.filter((g) => def.volume(g) > 0);
+  if (!used.length) return null;
+
+  let vol = 0, yds = 0;
+  for (const g of used) { vol += def.volume(g); yds += def.yards(g); }
+
+  const n = used.length;
+  const rawVolPerGame = vol / n;
+  const rawPerUnit = vol ? yds / vol : rates.league.perUnit;
+
+  const volPerGame = shrink(rawVolPerGame, n, rates.league.perGame, PLAYER_SHRINK);
+  const perUnit = shrink(rawPerUnit, n, rates.league.perUnit, PLAYER_SHRINK);
+
+  const d = rates.teams.get(opponent);
+
+  // Volume is the player's role, nudged only slightly by the opponent — a
+  // defence has far less say over how often he is used than over how far he
+  // gets when he is. Efficiency takes the matchup at full weight.
+  const volAdj = d ? 1 + (d.volFactor - 1) * 0.25 : 1;
+  const effAdj = d ? d.effFactor : 1;
+
+  const projVol = volPerGame * volAdj;
+  const projEff = perUnit * effAdj;
+
+  return {
+    yards: projVol * projEff,
+    volume: projVol,
+    perUnit: projEff,
+    baseVolume: volPerGame,
+    basePerUnit: perUnit,
+    n,
+    carried,
+    defGames: d ? d.games : 0,
+    // How much the matchup moved the number, as a percentage.
+    edge: (volAdj * effAdj - 1) * 100,
+    thin: n < 3 || !d || d.games < 3,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Rendering
+// ---------------------------------------------------------------------------
+
+function render() {
+  syncControls();
+  if (!data || !index) return;
+
+  if (prefs.view === 'defence') renderDefences();
+  else renderMatchups();
+}
+
+function weekGames() {
+  return data.games.filter((g) => g.season === data.season && g.week === prefs.week);
+}
+
+function buildRows() {
+  const rates = defenceRates(prefs.stat);
+  const def = STATS[prefs.stat];
+  const minVol = Number(prefs.min);
+  const term = (prefs.search || '').trim().toUpperCase();
+  const rows = [];
+
+  for (const g of weekGames()) {
+    for (const [team, opp, atHome] of [[g.home, g.away, true], [g.away, g.home, false]]) {
+      for (const p of index.players.values()) {
+        if (p.team !== team) continue;
+        if (!def.positions.includes(p.pos)) continue;
+
+        const proj = project(p, opp, prefs.stat, rates);
+        if (!proj) continue;
+        if (proj.volume < minVol) continue;
+        if (term && !(p.name || '').toUpperCase().includes(term)
+          && !team.includes(term) && !opp.includes(term)) continue;
+
+        rows.push({ player: p, game: g, team, opp, atHome, proj });
+      }
+    }
+  }
+
+  rows.sort((a, b) => {
+    if (prefs.sort === 'edge') return b.proj.edge - a.proj.edge;
+    if (prefs.sort === 'game') {
+      if (a.game.id !== b.game.id) return (a.game.id || '').localeCompare(b.game.id || '');
+      return b.proj.yards - a.proj.yards;
+    }
+    return b.proj.yards - a.proj.yards;
+  });
+
+  return { rows, rates };
+}
+
+function renderMatchups() {
+  const { rows, rates } = buildRows();
+  const def = STATS[prefs.stat];
+
+  document.getElementById('strip').innerHTML =
+    stat(weekGames().length, 'games in week ' + prefs.week)
+    + stat(rows.length, 'players projected')
+    + stat(rates.league.perGame.toFixed(1), 'league ' + def.volumeLabel + ' per game')
+    + stat(rates.league.perUnit.toFixed(2), 'league ' + def.effLabel)
+    + stat(data.seasons.join(', '), 'seasons loaded');
+
+  const view = document.getElementById('mainView');
+
+  if (!rows.length) {
+    view.innerHTML = '<div class="empty">Nothing to project for week ' + prefs.week
+      + '. If the season has not started, last season carries the projections once the schedule loads.</div>';
+    return;
+  }
+
+  if (prefs.sort === 'game') {
+    const byGame = new Map();
+    for (const r of rows) {
+      if (!byGame.has(r.game.id)) byGame.set(r.game.id, []);
+      byGame.get(r.game.id).push(r);
+    }
+    view.innerHTML = [...byGame.values()].map((group) =>
+      gameBlock(group[0].game, group)).join('');
+  } else {
+    view.innerHTML = gameBlock(null, rows);
+  }
+}
+
+function gameBlock(game, rows) {
+  const def = STATS[prefs.stat];
+  let head;
+
+  if (game) {
+    const line = [];
+    if (game.spread !== null) {
+      line.push(game.spread < 0
+        ? game.home + ' by ' + Math.abs(game.spread)
+        : game.away + ' by ' + Math.abs(game.spread));
+    }
+    if (game.total !== null) line.push('total ' + game.total);
+    head = '<div class="gamehead"><b>' + esc(game.away) + ' at ' + esc(game.home) + '</b>'
+      + '<span>' + esc([game.date, line.join(' · ')].filter(Boolean).join(' · ')) + '</span></div>';
+  } else {
+    head = '<div class="gamehead"><b>Week ' + prefs.week + ' — projected ' + def.label + '</b>'
+      + '<span>' + (prefs.sort === 'edge' ? 'biggest matchup swing first' : 'highest projection first') + '</span></div>';
+  }
+
+  return '<section class="game">' + head + rows.map(playerRow).join('') + '</section>';
+}
+
+function playerRow(r) {
+  const def = STATS[prefs.stat];
+  const p = r.proj;
+
+  const edgeTag = Math.abs(p.edge) < 3 ? ''
+    : '<span class="mtag ' + (p.edge > 0 ? 'up' : 'down') + '">'
+      + (p.edge > 0 ? '+' : '') + p.edge.toFixed(0) + '%</span>';
+
+  const thinTag = p.thin ? '<span class="mtag thin">thin</span>' : '';
+
+  const provenance = p.n + ' games'
+    + (p.carried ? ', ' + p.carried + ' from last season' : '')
+    + ' · vs ' + esc(r.opp) + (r.atHome ? ' at home' : ' away');
+
+  return '<article class="plr">'
+    + '<div class="proj"><b>' + p.yards.toFixed(1) + '</b><span>' + def.label + '</span></div>'
+    + '<div class="who"><b>' + esc(r.player.name || r.player.id) + ' <span style="color:var(--dim)">'
+      + esc(r.player.pos) + '</span>' + edgeTag + thinTag + '</b>'
+      + '<span>' + provenance + '</span></div>'
+    + '<div class="split">'
+      + '<div><b>' + p.volume.toFixed(1) + '</b>' + def.volumeLabel + '</div>'
+      + '<div><b>' + p.perUnit.toFixed(2) + '</b>' + def.effLabel + '</div>'
+      + '<div><b>' + p.baseVolume.toFixed(1) + ' / ' + p.basePerUnit.toFixed(2) + '</b>before matchup</div>'
+    + '</div></article>';
+}
+
+function renderDefences() {
+  const rates = defenceRates(prefs.stat);
+  const def = STATS[prefs.stat];
+
+  const rows = [...rates.teams.entries()]
+    .map(([team, d]) => ({ team, ...d }))
+    .sort((a, b) => b.perUnit - a.perUnit);
+
+  document.getElementById('strip').innerHTML =
+    stat(rows.length, 'defences rated')
+    + stat(rates.league.perGame.toFixed(1), 'league ' + def.volumeLabel + ' per game')
+    + stat(rates.league.perUnit.toFixed(2), 'league ' + def.effLabel);
+
+  document.getElementById('mainView').innerHTML =
+    '<table><thead><tr><th>Defence</th><th>Games</th><th>' + def.volumeLabel + ' faced</th>'
+    + '<th>' + def.effLabel + ' allowed</th><th>Volume vs league</th><th>Efficiency vs league</th>'
+    + '<th>Yards allowed per game</th></tr></thead><tbody>'
+    + rows.map((r) => '<tr><td>' + esc(r.team) + '</td><td>' + r.games + '</td>'
+      + '<td>' + r.volPerGame.toFixed(1) + '</td><td>' + r.perUnit.toFixed(2) + '</td>'
+      + '<td>' + r.volFactor.toFixed(2) + '</td><td>' + r.effFactor.toFixed(2) + '</td>'
+      + '<td>' + (r.volPerGame * r.perUnit).toFixed(1) + '</td></tr>').join('')
+    + '</tbody></table>';
+}
+
+function stat(value, label) {
+  return '<div class="stat"><b>' + value + '</b><span>' + label + '</span></div>';
+}
+
+// ---------------------------------------------------------------------------
+// Controls
+// ---------------------------------------------------------------------------
+
+function bindSegment(id, key) {
+  document.getElementById(id).addEventListener('click', (e) => {
+    const btn = e.target.closest('button');
+    if (!btn) return;
+    prefs[key] = btn.dataset[key];
+    savePrefs();
+    render();
+  });
+}
+
+function syncControls() {
+  [['statControl', 'stat'], ['sortControl', 'sort'], ['minControl', 'min'], ['viewControl', 'view']]
+    .forEach((pair) => {
+      document.querySelectorAll('#' + pair[0] + ' button').forEach((b) => {
+        b.setAttribute('aria-pressed', b.dataset[pair[1]] === prefs[pair[1]]);
+      });
+    });
+  const s = document.getElementById('search');
+  if (s.value !== prefs.search) s.value = prefs.search;
+}
+
+function esc(s) {
+  return String(s === null || s === undefined ? '' : s)
+    .replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+// ---------------------------------------------------------------------------
+// Boot
+// ---------------------------------------------------------------------------
+
+bindSegment('statControl', 'stat');
+bindSegment('sortControl', 'sort');
+bindSegment('minControl', 'min');
+bindSegment('viewControl', 'view');
+
+document.getElementById('weekSelect').addEventListener('change', (e) => {
+  prefs.week = Number(e.target.value);
+  savePrefs();
+  render();
+});
+
+let searchTimer = null;
+document.getElementById('search').addEventListener('input', (e) => {
+  prefs.search = e.target.value;
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(() => { savePrefs(); render(); }, 200);
+});
+
+document.getElementById('refreshBtn').addEventListener('click', async () => {
+  const btn = document.getElementById('refreshBtn');
+  btn.disabled = true;
+  document.getElementById('messages').innerHTML = '';
+  await load({ force: true });
+  btn.disabled = false;
+});
+
+syncControls();
+load();
+</script>
+</body>
+</html>
