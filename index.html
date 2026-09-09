@@ -229,10 +229,9 @@ const STATS = {
 // Loading
 // ---------------------------------------------------------------------------
 
-// Prefers the file committed by the scheduled GitHub Action — same origin,
-// no CORS, no serverless invocation. Falls back to the Netlify function so
-// the tool still works if it's deployed there instead.
-const DATA_SOURCES = ['./data/data.json', '/.netlify/functions/data'];
+// The Netlify function is the live path. The committed data file is kept as
+// a fallback so the tool still works on GitHub Pages if it's ever moved.
+const DATA_SOURCES = ['/.netlify/functions/data', './data/data.json'];
 
 async function fetchPayload() {
   const failures = [];
@@ -304,9 +303,8 @@ function showNote(message, haveCache) {
   el.className = 'note';
   el.innerHTML = haveCache
     ? '<h3>Showing the last saved copy</h3><p>The live fetch failed: ' + esc(message) + '.</p>'
-    : '<h3>No data file yet</h3><p>Nothing answered: ' + esc(message) + '.</p>'
-      + '<p>Run the <b>Update NFL data</b> workflow from the Actions tab to create '
-      + '<code>data/data.json</code>, then reload.</p>';
+    : '<h3>Could not reach the data function</h3><p>Nothing answered: ' + esc(message) + '.</p>'
+      + '<p>If you are opening this file directly, the function is not running. Start it with <code>netlify dev</code>, or deploy the site.</p>';
   document.getElementById('messages').appendChild(el);
 }
 
