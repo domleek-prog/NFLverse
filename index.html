@@ -229,6 +229,29 @@ const STATS = {
 // Loading
 // ---------------------------------------------------------------------------
 
+// Prefers the file committed by the scheduled GitHub Action — same origin,
+// no CORS, no serverless invocation. Falls back to the Netlify function so
+// the tool still works if it's deployed there instead.
+const DATA_SOURCES = ['./data/data.json', '/.netlify/functions/data'];
+
+async function fetchPayload() {
+  const failures = [];
+
+  for (const url of DATA_SOURCES) {
+    try {
+      const res = await fetch(url, { cache: 'no-cache' });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const payload = await res.json();
+      if (!payload.stats || !payload.stats.length) throw new Error('no stats in payload');
+      return payload;
+    } catch (err) {
+      failures.push(url.replace('./', '') + ' — ' + err.message);
+    }
+  }
+
+  throw new Error(failures.join('; '));
+}
+
 async function load({ force = false } = {}) {
   const cached = readCache();
   if (cached && !force) {
@@ -239,17 +262,7 @@ async function load({ force = false } = {}) {
   setStatus(cached ? 'Checking for new games…' : 'Fetching stats…');
 
   try {
-    const res = await fetch('/.netlify/functions/data');
-    if (!res.ok) throw new Error('Server returned ' + res.status);
-
-    const payload = await res.json();
-
-    if (!payload.stats || !payload.stats.length) {
-      const detail = (payload.attempts || []).slice(0, 3)
-        .map((a) => a.url.split('/').slice(-1)[0] + ' — ' + a.message).join('; ');
-      throw new Error(detail || 'The function ran but returned no stats.');
-    }
-
+    const payload = await fetchPayload();
     writeCache(payload);
     adopt(payload, false);
   } catch (err) {
@@ -291,8 +304,9 @@ function showNote(message, haveCache) {
   el.className = 'note';
   el.innerHTML = haveCache
     ? '<h3>Showing the last saved copy</h3><p>The live fetch failed: ' + esc(message) + '.</p>'
-    : '<h3>Could not reach the data function</h3><p>The fetch failed: ' + esc(message) + '.</p>'
-      + '<p>If you are opening this file directly, the function is not running. Start it with <code>netlify dev</code>, or deploy the site.</p>';
+    : '<h3>No data file yet</h3><p>Nothing answered: ' + esc(message) + '.</p>'
+      + '<p>Run the <b>Update NFL data</b> workflow from the Actions tab to create '
+      + '<code>data/data.json</code>, then reload.</p>';
   document.getElementById('messages').appendChild(el);
 }
 
